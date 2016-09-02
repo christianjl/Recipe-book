@@ -6,10 +6,10 @@ Written for Python 3.5.1
 
 * Save new recipe.
 * Display saved recipes
+* Delete existing recipes
 
 **In development**
 
-* Delete existing recipes
 * Edit Existing recipes
 * Create shopping list
 * Email function to send shopping list
