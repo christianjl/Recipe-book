@@ -1,13 +1,11 @@
-import os
 import sys
 from PyQt5.QtWidgets import QPushButton, QWidget, QApplication, QLabel, QGridLayout, \
     QComboBox, QLineEdit, QListWidget, QAction, QMainWindow, QTabWidget, QTextEdit, QTableWidget, \
-    QListWidgetItem, QTextBrowser
-from PyQt5.QtCore import Qt, QMimeData, QSize
-from PyQt5.QtGui import QDrag, QIcon
+    QListWidgetItem, QTextBrowser, QAbstractItemView
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon
 import html_print
 import SQL_reader
-import sqlite3
 
 
 class CreateNewRecipe(QWidget):
@@ -112,11 +110,13 @@ class RecipeData(QWidget):
         super().__init__()
 
         self.current_item = 0
+        self.shopping_list_item = 0
 
         grid = QGridLayout()
         grid.setSpacing(15)
 
-        # Widgets
+        # - - - Widgets - - -
+
         type_label = QLabel('Type:')
         type_label.setFixedWidth(250)
         type_combo_box = QComboBox(self)
@@ -136,7 +136,7 @@ class RecipeData(QWidget):
         self.new_recipe_button.setIconSize(QSize(28, 28))
         self.new_recipe_button.setMaximumSize(32, 32)
         self.new_recipe_button.setStyleSheet("background-color: white")
-        self.new_recipe_button.setStatusTip('Add New Recipe')
+        self.new_recipe_button.setStatusTip('Add New Recipe.')
         self.new_recipe_button.clicked.connect(lambda: add_new_recipe())
 
         # Add to shopping list button
@@ -145,7 +145,8 @@ class RecipeData(QWidget):
         self.add_to_shopping_button.setIconSize(QSize(32, 32))
         self.add_to_shopping_button.setMaximumSize(32, 32)
         self.add_to_shopping_button.setStyleSheet("background-color: white")
-        self.add_to_shopping_button.setStatusTip('Add Recipe To Shopping List')
+        self.add_to_shopping_button.setStatusTip('Add Recipe To Shopping List.')
+        self.add_to_shopping_button.clicked.connect(lambda: self.add_to_shopping_list())
 
         # Refresh data button
         self.refresh_button = QPushButton()
@@ -153,7 +154,7 @@ class RecipeData(QWidget):
         self.refresh_button.setIconSize(QSize(26, 26))
         self.refresh_button.setMaximumSize(32, 32)
         self.refresh_button.setStyleSheet("background-color: white")
-        self.refresh_button.setStatusTip('Refresh List')
+        self.refresh_button.setStatusTip('Refresh List.')
 
         # Delete recipe button
         self.delete_button = QPushButton()
@@ -161,11 +162,10 @@ class RecipeData(QWidget):
         self.delete_button.setIconSize(QSize(28, 28))
         self.delete_button.setMaximumSize(32, 32)
         self.delete_button.setStyleSheet("background-color: white")
-        self.delete_button.setStatusTip('Delete Recipe')
+        self.delete_button.setStatusTip('Delete Recipe.')
         self.delete_button.clicked.connect(lambda: self.delete_recipe())
 
         self.text_area = QTabWidget()
-        # text_edit_area = EditRecipe()
         self.text_area.tab1 = QTextEdit()
         self.text_area.tab2 = EditRecipe()
 
@@ -183,7 +183,6 @@ class RecipeData(QWidget):
         grid.addWidget(self.add_to_shopping_button, 1, 1)
         grid.addWidget(self.refresh_button, 2, 1)
         grid.addWidget(self.delete_button, 3, 1)
-
         grid.addWidget(self.text_area, 0, 2, 5, 1)
 
         self.setLayout(grid)
@@ -202,23 +201,64 @@ class RecipeData(QWidget):
         title, ingredients, instructions = SQL_reader.recipe_data(item.text())
         recipe_text = html_print.display_output(title, ingredients, instructions)
         self.text_area.tab1.setHtml(recipe_text)
+        self.shopping_list_item = item
         self.current_item = item.text()
         return
+
+    def add_to_shopping_list(self):
+        ShoppingList.add_recipe(main_window.window_content.tab2, self.current_item)
 
     def delete_recipe(self):
         SQL_reader.delete_function(self.current_item)
         self.populate_recipe_list()
 
 
+class ShoppingList(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.grid = QGridLayout()
+        self.grid.setSpacing(15)
+
+        self.recipe_list_label = QLabel('Current shopping list:')
+        self.list_of_recipes = QListWidget()
+        self.list_of_recipes.setMaximumWidth(300)
+        self.list_of_recipes.setSelectionMode(QAbstractItemView.MultiSelection)
+
+        self.remove_button = QPushButton('Remove')
+        self.remove_button.setMaximumWidth(120)
+        self.remove_button.clicked.connect(lambda: self.remove_item())
+        self.remove_button.setStatusTip('Remove Selected Recipe(s).')
+
+        self.email_list_button = QPushButton('Email Shopping List')
+        self.email_list_button.setMaximumWidth(120)
+        self.email_list_button.setStatusTip('Email Ingredient List.')
+
+        self.grid.addWidget(self.recipe_list_label, 0, 0)
+        self.grid.addWidget(self.list_of_recipes, 1, 0, 8, 1)
+        self.grid.addWidget(self.remove_button, 1, 1)
+        self.grid.addWidget(self.email_list_button, 2, 1)
+
+        self.setLayout(self.grid)
+
+    def add_recipe(self, list_item):
+        self.list_of_recipes.addItem(list_item)
+
+    def remove_item(self):
+        selected_items = self.list_of_recipes.selectedItems()
+        for item in selected_items:
+            self.list_of_recipes.takeItem(self.list_of_recipes.row(item))
+
+
 class TabWindow(QTabWidget):
     def __init__(self):
         super().__init__()
         self.tab1 = RecipeData()
-        #TODO
-        #self.tab2 = ShoppingList()
+
+        self.tab2 = ShoppingList()
 
         self.addTab(self.tab1, 'Recipes')
-        #self.addTab(self.tab2, 'Shopping List')
+        self.addTab(self.tab2, 'Shopping List')
 
 
 class MainWindow(QMainWindow):
@@ -235,19 +275,19 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu('Options')
 
         new_recipe = QAction('New Recipe', self)
-        refresh = QAction('Refresh', self)
-        exit_action = QAction('Exit', self)
-
+        new_recipe.setStatusTip('Add New Recipe.')
         new_recipe.triggered.connect(lambda: add_new_recipe())
+
+        refresh = QAction('Refresh', self)
+        refresh.setStatusTip('Refresh Data To Display Newly Added Recipes.')
         refresh.triggered.connect(self.window_content.tab1.populate_recipe_list)
+
+        exit_action = QAction('Exit', self)
+        exit_action.setStatusTip('Exit application.')
 
         file_menu.addAction(new_recipe)
         file_menu.addAction(refresh)
         file_menu.addAction(exit_action)
-
-        new_recipe.setStatusTip('Add New Recipe')
-        refresh.setStatusTip('Refresh Data To Display Newly Added Recipes')
-        exit_action.setStatusTip('Exit application')
 
         self.statusBar()
 
