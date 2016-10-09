@@ -1,9 +1,11 @@
+#!/usr/bin/python
 import sys
 from PyQt5.QtWidgets import QPushButton, QWidget, QApplication, QLabel, QGridLayout, \
     QComboBox, QLineEdit, QListWidget, QAction, QMainWindow, QTabWidget, QTextEdit, QTableWidget, \
     QListWidgetItem, QTextBrowser, QAbstractItemView
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
+import emailBot
 import html_print
 import SQL_reader
 
@@ -223,7 +225,7 @@ class ShoppingList(QWidget):
         self.recipe_list_label = QLabel('Current shopping list:')
         self.list_of_recipes = QListWidget()
         self.list_of_recipes.setMaximumWidth(300)
-        self.list_of_recipes.setSelectionMode(QAbstractItemView.MultiSelection)
+        #self.list_of_recipes.setSelectionMode(QAbstractItemView.MultiSelection)
 
         self.remove_button = QPushButton('Remove')
         self.remove_button.setMaximumWidth(120)
@@ -232,6 +234,7 @@ class ShoppingList(QWidget):
 
         self.email_list_button = QPushButton('Email Shopping List')
         self.email_list_button.setMaximumWidth(120)
+        self.email_list_button.clicked.connect(lambda: self.email_shopping_list())
         self.email_list_button.setStatusTip('Email Ingredient List.')
 
         self.grid.addWidget(self.recipe_list_label, 0, 0)
@@ -248,6 +251,22 @@ class ShoppingList(QWidget):
         selected_items = self.list_of_recipes.selectedItems()
         for item in selected_items:
             self.list_of_recipes.takeItem(self.list_of_recipes.row(item))
+
+    def email_shopping_list(self):
+        shopping_items = []
+        for pos in range(self.list_of_recipes.count()):
+            shopping_items.append(self.list_of_recipes.item(pos).text())
+
+        email_body = ''
+
+        for name in shopping_items:
+            recipe_title, recipe_ingredients, recipe_instructions = SQL_reader.recipe_data(name)
+            email_body += '\n-- {}\n\n- Ingredients:\n'.format(name)
+
+            for ingredient in recipe_ingredients:
+                email_body += ('    {}\n'.format(ingredient))
+
+        emailBot.emailMe(email_body)
 
 
 class TabWindow(QTabWidget):
