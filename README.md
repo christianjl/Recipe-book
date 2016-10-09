@@ -8,11 +8,12 @@ Written for Python 3.5.1
 * Display saved recipes
 * Create shopping list
 * Delete existing recipes
+* Email function to send shopping list
 
 **In development**
 
 * Edit Existing recipes
-* Email function to send shopping list
+
 
 **Installation:**
 
